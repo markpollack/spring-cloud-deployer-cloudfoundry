@@ -26,12 +26,11 @@ public interface AppDeploymentCustomizer {
 
 	/**
 	 * Contract for providing a unique deployment id per user per dataflow server. By using this API, different users
-	 * can provide similarly named streams (such as <i>ticktock</i>) and the deployer would generate a unique prefix
-	 * for each of those users and attach to the streams to handle multiple deployment of apps on those streams.
+	 * can provide similarly named streams (such as <i>ticktock</i> = time | log) and the deployer would generate a
+	 * unique prefix for each deployed application, e.g. time and log.
+	 *
 	 * This deployment ID with the unique prefix will be part of the name and route created by the
 	 * targeted platform under the same domain.
-	 *
-	 * A concrete example would be when multiple users create the same stream name under the same domain on CloudFoundry.
 	 *
 	 * @param appName application name (stream-app)
 	 * @return deployment ID with a unique prefix

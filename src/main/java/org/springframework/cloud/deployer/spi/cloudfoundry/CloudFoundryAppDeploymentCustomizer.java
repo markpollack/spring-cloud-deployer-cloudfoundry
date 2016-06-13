@@ -17,9 +17,7 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 
 /**
@@ -31,17 +29,17 @@ public class CloudFoundryAppDeploymentCustomizer implements AppDeploymentCustomi
 
 	private static final Log logger = LogFactory.getLog(CloudFoundryAppDeploymentCustomizer.class);
 
-	private final String DEFAULT_SPRING_APPLICATION_NAME = "spring-cloud-dataflow-server-cloudfoundry";
+//	private final String DEFAULT_SPRING_APPLICATION_NAME = "spring-cloud-dataflow-server-cloudfoundry";
+//
+//	private final String DEFAULT_DATAFLOW_NAME_TO_USE = "dataflow";
 
-	private final String DEFAULT_DATAFLOW_NAME_TO_USE = "dataflow";
-
-	private String uniquePrefix;
+	private String prefixToUse = "";
 
 	private final CloudFoundryDeployerProperties properties;
 	private final WordListRandomWords wordListRandomWords;
 
-	@Value("${spring.application.name:}")
-	private String springApplicationName;
+//	@Value("${spring.application.name:}")
+//	private String springApplicationName;
 
 	public CloudFoundryAppDeploymentCustomizer(CloudFoundryDeployerProperties cloudFoundryDeployerProperties,
 											   WordListRandomWords wordListRandomWords) {
@@ -51,24 +49,40 @@ public class CloudFoundryAppDeploymentCustomizer implements AppDeploymentCustomi
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
-		if (properties.isAppPrefixEnabled()) {
-			uniquePrefix = StringUtils.isEmpty(properties.getAppPrefix()) ?
-					String.format("%s-%s-%s", shallFallBackToDefault()
-									? DEFAULT_DATAFLOW_NAME_TO_USE : springApplicationName, wordListRandomWords.getAdjective(),
-							wordListRandomWords.getNoun()) :
-					properties.getAppPrefix();
-			logger.info(String.format("Unique prefix to be used for deploying apps: %s", uniquePrefix));
+		if (properties.isEnableRandomAppNamePrefix()) {
+			prefixToUse = createUniquePrefix();
+			if (!StringUtils.isEmpty(properties.getAppNamePrefix())) {
+				prefixToUse = String.format("%s-%s", properties.getAppNamePrefix(), prefixToUse);
+			}
+		} else {
+			if (!StringUtils.isEmpty(properties.getAppNamePrefix())) {
+				prefixToUse = properties.getAppNamePrefix();
+			}
 		}
+//		if (!StringUtils.isEmpty(properties.getAppNamePrefix())) {
+//			prefixToUse = String.format("%s-%s", properties.getAppNamePrefix(), prefixToUse);
+//		}
+		logger.info(String.format("Prefix to be used for deploying apps: %s", prefixToUse));
 	}
+
 
 	@Override
 	public String deploymentIdWithUniquePrefix(String appName) {
-		return StringUtils.isEmpty(uniquePrefix) ? appName : String.format("%s-%s", uniquePrefix, appName);
+		if (StringUtils.isEmpty(prefixToUse)) {
+			return appName;
+		} else {
+			return String.format("%s-%s", prefixToUse, appName);
+		}
 	}
 
-	private boolean shallFallBackToDefault() {
-		return StringUtils.isEmpty(springApplicationName) ||
-				springApplicationName.equals(DEFAULT_SPRING_APPLICATION_NAME);
+	private String createUniquePrefix() {
+		return String.format("%s-%s", wordListRandomWords.getAdjective(), wordListRandomWords.getNoun());
 	}
+
+
+//	private boolean shallFallBackToDefault() {
+//		return StringUtils.isEmpty(springApplicationName) ||
+//				springApplicationName.equals(DEFAULT_SPRING_APPLICATION_NAME);
+//	}
 
 }

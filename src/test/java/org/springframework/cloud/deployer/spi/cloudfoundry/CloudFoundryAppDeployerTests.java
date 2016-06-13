@@ -97,8 +97,9 @@ public class CloudFoundryAppDeployerTests {
 		services = mock(Services.class);
 
 		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
-		properties.setAppPrefix("dataflow-foobar");
-		properties.setAppPrefixEnabled(true);
+		properties.setAppNamePrefix("dataflow-server");
+		//Tests are setup not to handle random name prefix = true;
+		properties.setEnableRandomAppNamePrefix(false);
 		deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(properties, new WordListRandomWords());
 		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).afterPropertiesSet();
 
@@ -115,11 +116,11 @@ public class CloudFoundryAppDeployerTests {
 
 		// when
 		String deploymentId = deployer.deploy(new AppDeploymentRequest(
-				new AppDefinition("test", Collections.emptyMap()),
+				new AppDefinition("time", Collections.emptyMap()),
 				new FileSystemResource("")));
 
 		// then
-		assertThat(deploymentId, equalTo("dataflow-foobar-test"));
+		assertThat(deploymentId, equalTo("dataflow-server-time"));
 	}
 
 	@Test
@@ -131,12 +132,12 @@ public class CloudFoundryAppDeployerTests {
 
 		// when
 		String deploymentId = deployer.deploy(new AppDeploymentRequest(
-				new AppDefinition("test", Collections.emptyMap()),
+				new AppDefinition("time", Collections.emptyMap()),
 				new FileSystemResource(""),
-				Collections.singletonMap(AppDeployer.GROUP_PROPERTY_KEY, "prefix")));
+				Collections.singletonMap(AppDeployer.GROUP_PROPERTY_KEY, "ticktock")));
 
 		// then
-		assertThat(deploymentId, equalTo("dataflow-foobar-prefix-test"));
+		assertThat(deploymentId, equalTo("dataflow-server-ticktock-time"));
 	}
 
 	@Test
@@ -234,7 +235,7 @@ public class CloudFoundryAppDeployerTests {
 		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
 
 		deployer.asyncDeploy(new AppDeploymentRequest(
-				new AppDefinition("test", Collections.emptyMap()),
+				new AppDefinition("time", Collections.emptyMap()),
 				mock(Resource.class),
 				Collections.emptyMap()))
 				.subscribe(testSubscriber);
@@ -247,8 +248,8 @@ public class CloudFoundryAppDeployerTests {
 		verifyNoMoreInteractions(operations);
 
 		then(applications).should().push(any());
-		then(applications).should().get(GetApplicationRequest.builder().name("dataflow-foobar-test").build());
-		then(applications).should().start(StartApplicationRequest.builder().name("dataflow-foobar-test").build());
+		then(applications).should().get(GetApplicationRequest.builder().name("dataflow-server-time").build());
+		then(applications).should().start(StartApplicationRequest.builder().name("dataflow-server-time").build());
 		verifyNoMoreInteractions(applications);
 
 		then(client).should().applicationsV2();
@@ -263,11 +264,11 @@ public class CloudFoundryAppDeployerTests {
 		verifyNoMoreInteractions(applicationsV2);
 
 		then(services).should().bind(BindServiceInstanceRequest.builder()
-				.applicationName("dataflow-foobar-test")
+				.applicationName("dataflow-server-time")
 				.serviceInstanceName("redis-service")
 				.build());
 		then(services).should().bind(BindServiceInstanceRequest.builder()
-				.applicationName("dataflow-foobar-test")
+				.applicationName("dataflow-server-time")
 				.serviceInstanceName("mysql-service")
 				.build());
 		verifyNoMoreInteractions(services);

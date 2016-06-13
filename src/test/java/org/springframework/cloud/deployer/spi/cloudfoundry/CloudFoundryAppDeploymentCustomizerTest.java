@@ -24,28 +24,35 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * @author Soby Chacko
+ * @author Mark Pollack
  */
 public class CloudFoundryAppDeploymentCustomizerTest {
 
 	@Test
-	public void testDeploymentIdWithUniquePrefix() throws Exception {
+	public void testDeploymentIdWithAppNamePrefixAndRandomAppNamePrefixFalse() throws Exception {
 		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
-		properties.setAppPrefix("dataflow-foobar");
-		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(properties, new WordListRandomWords());
-		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).afterPropertiesSet();
+		properties.setEnableRandomAppNamePrefix(false);
+		properties.setAppNamePrefix("dataflow");
+		CloudFoundryAppDeploymentCustomizer deploymentCustomizer =
+				new CloudFoundryAppDeploymentCustomizer(properties, new WordListRandomWords());
+		deploymentCustomizer.afterPropertiesSet();
 
-		assertEquals(deploymentCustomizer.deploymentIdWithUniquePrefix("foo"), "dataflow-foobar-foo");
+		assertEquals("dataflow-foo", deploymentCustomizer.deploymentIdWithUniquePrefix("foo") );
 	}
 
 	@Test
-	public void testDeploymentIdWithUniquePrefixWhenNoDataflowNameProvided() throws Exception {
-		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new CloudFoundryDeployerProperties(), new WordListRandomWords());
-		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).afterPropertiesSet();
+	public void testDeploymentIdWithAppNamePrefixAndRandomAppNamePrefixTrue() throws Exception {
+		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		properties.setEnableRandomAppNamePrefix(true);
+		properties.setAppNamePrefix("dataflow-longername");
+		CloudFoundryAppDeploymentCustomizer deploymentCustomizer =
+				new CloudFoundryAppDeploymentCustomizer(properties, new WordListRandomWords());
+		deploymentCustomizer.afterPropertiesSet();
 
 		String deploymentIdWithUniquePrefix = deploymentCustomizer.deploymentIdWithUniquePrefix("foo");
 		assertTrue(deploymentIdWithUniquePrefix.startsWith("dataflow-"));
 		assertTrue(deploymentIdWithUniquePrefix.endsWith("-foo"));
-		assertTrue(deploymentIdWithUniquePrefix.matches("dataflow-\\w+-\\w+-foo"));
+		assertTrue(deploymentIdWithUniquePrefix.matches("dataflow-longername-\\w+-\\w+-foo"));
 
 		String deploymentIdWithUniquePrefixAgain = deploymentCustomizer.deploymentIdWithUniquePrefix("foo");
 
@@ -53,35 +60,30 @@ public class CloudFoundryAppDeploymentCustomizerTest {
 	}
 
 	@Test
-	public void testDeploymentIdWithUniquePrefixWhenCustomSpringApplicationNameIsProvided() throws Exception {
-		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new CloudFoundryDeployerProperties(), new WordListRandomWords());
-		ReflectionTestUtils.setField(deploymentCustomizer, "springApplicationName", "custom-dataflow");
-		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).afterPropertiesSet();
+	public void testDeploymentIdWithoutAppNamePrefixAndRandomAppNamePrefixTrue() throws Exception {
+		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		properties.setEnableRandomAppNamePrefix(true);
+		properties.setAppNamePrefix("");
+		CloudFoundryAppDeploymentCustomizer deploymentCustomizer =
+				new CloudFoundryAppDeploymentCustomizer(properties, new WordListRandomWords());
+		deploymentCustomizer.afterPropertiesSet();
 
-		String deploymentIdWithUniquePrefix = deploymentCustomizer.deploymentIdWithUniquePrefix("foobar");
-		assertTrue(deploymentIdWithUniquePrefix.startsWith("custom-dataflow-"));
-		assertTrue(deploymentIdWithUniquePrefix.endsWith("-foobar"));
-		assertTrue(deploymentIdWithUniquePrefix.matches("custom-dataflow-\\w+-\\w+-foobar"));
+		String deploymentIdWithUniquePrefix = deploymentCustomizer.deploymentIdWithUniquePrefix("foo");
+		assertTrue(deploymentIdWithUniquePrefix.endsWith("-foo"));
 
-		String deploymentIdWithUniquePrefixAgain = deploymentCustomizer.deploymentIdWithUniquePrefix("foobar");
-
-		assertEquals(deploymentIdWithUniquePrefix, deploymentIdWithUniquePrefixAgain);
+		assertTrue(deploymentIdWithUniquePrefix.matches("\\w+-\\w+-foo"));
 	}
 
 	@Test
-	public void testDeploymentIdWithUniquePrefixWhenSpringApplicationNameDefaultsToJarName() throws Exception {
-		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new CloudFoundryDeployerProperties(), new WordListRandomWords());
-		ReflectionTestUtils.setField(deploymentCustomizer, "springApplicationName", "spring-cloud-dataflow-server-cloudfoundry");
-		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).afterPropertiesSet();
+	public void testDeploymentIdWithoutAppNamePrefixAndRandomAppNamePrefixFalse() throws Exception {
+		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		properties.setEnableRandomAppNamePrefix(false);
+		properties.setAppNamePrefix("");
+		CloudFoundryAppDeploymentCustomizer deploymentCustomizer =
+				new CloudFoundryAppDeploymentCustomizer(properties, new WordListRandomWords());
+		deploymentCustomizer.afterPropertiesSet();
 
-		String deploymentIdWithUniquePrefix = deploymentCustomizer.deploymentIdWithUniquePrefix("foobar");
-		assertTrue(deploymentIdWithUniquePrefix.startsWith("dataflow-"));
-		assertTrue(deploymentIdWithUniquePrefix.endsWith("-foobar"));
-		assertTrue(deploymentIdWithUniquePrefix.matches("dataflow-\\w+-\\w+-foobar"));
-
-		String deploymentIdWithUniquePrefixAgain = deploymentCustomizer.deploymentIdWithUniquePrefix("foobar");
-
-		assertEquals(deploymentIdWithUniquePrefix, deploymentIdWithUniquePrefixAgain);
+		assertEquals("foo", deploymentCustomizer.deploymentIdWithUniquePrefix("foo"));
 	}
 
 }

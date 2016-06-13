@@ -199,7 +199,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		String appName = Optional.ofNullable(request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY))
 				.map(groupName -> String.format("%s-", groupName))
 				.orElse("") + request.getDefinition().getName();
-		return properties.isAppPrefixEnabled() ? appDeploymentCustomizer.deploymentIdWithUniquePrefix(appName) : appName;
+		return appDeploymentCustomizer.deploymentIdWithUniquePrefix(appName);
 	}
 
 	private Mono<String> getApplicationId(String name) {

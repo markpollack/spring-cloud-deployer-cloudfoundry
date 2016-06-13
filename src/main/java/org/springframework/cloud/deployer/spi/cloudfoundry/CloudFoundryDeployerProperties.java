@@ -15,6 +15,7 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import javax.validation.constraints.NotNull;
@@ -99,14 +100,15 @@ public class CloudFoundryDeployerProperties {
 	private int instances = 1;
 
 	/**
-	 * Flag to enable prefixing the app deployment.
+	 * Flag to enable prefixing the app name with a random prefix
 	 */
-	private boolean appPrefixEnabled = true;
+	private boolean enableRandomAppNamePrefix = true;
 
 	/**
-	 * String to use as prefix for app deployment.
+	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name
 	 */
-	private String appPrefix;
+	@Value("${spring.application.name:}")
+	private String appNamePrefix;
 
 	public Set<String> getServices() {
 		return services;
@@ -204,19 +206,19 @@ public class CloudFoundryDeployerProperties {
 		this.instances = instances;
 	}
 
-	public boolean isAppPrefixEnabled() {
-		return appPrefixEnabled;
+	public boolean isEnableRandomAppNamePrefix() {
+		return enableRandomAppNamePrefix;
 	}
 
-	public void setAppPrefixEnabled(boolean appPrefixEnabled) {
-		this.appPrefixEnabled = appPrefixEnabled;
+	public void setEnableRandomAppNamePrefix(boolean enableRandomAppNamePrefix) {
+		this.enableRandomAppNamePrefix = enableRandomAppNamePrefix;
 	}
 
-	public String getAppPrefix() {
-		return appPrefix;
+	public String getAppNamePrefix() {
+		return appNamePrefix;
 	}
 
-	public void setAppPrefix(String appPrefix) {
-		this.appPrefix = appPrefix;
+	public void setAppNamePrefix(String appNamePrefix) {
+		this.appNamePrefix = appNamePrefix;
 	}
 }
