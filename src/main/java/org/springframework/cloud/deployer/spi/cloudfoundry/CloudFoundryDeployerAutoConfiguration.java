@@ -54,7 +54,6 @@ import org.springframework.scheduling.annotation.EnableAsync;
  */
 @Configuration
 @EnableConfigurationProperties
-@EnableAsync
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
 public class CloudFoundryDeployerAutoConfiguration {
 
