@@ -18,6 +18,7 @@ import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.HttpStatusCodeException;
 
 /**
@@ -32,12 +33,21 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 
 	private final CloudFoundryOperations cloudFoundryOperations;
 
+	private ThreadPoolTaskExecutor taskExecutor;
+
 	public CloudFoundryV1AppDeployer(AppNameGenerator applicationNameGenerator,
 								   CloudFoundryDeploymentProperties deploymentProperties,
 								   CloudFoundryOperations cloudFoundryOperations) {
 		super(deploymentProperties);
 		this.cloudFoundryOperations = cloudFoundryOperations;
 		this.applicationNameGenerator = applicationNameGenerator;
+		ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+		taskExecutor.setCorePoolSize(4);
+		taskExecutor.setMaxPoolSize(4);
+		taskExecutor.afterPropertiesSet();
+		taskExecutor.setQueueCapacity(100);
+		this.taskExecutor = taskExecutor;
+
 	}
 
 	@Override
@@ -61,7 +71,9 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 			new ArrayList<String>(servicesToBind(request)));
 		Map<String, String> environmentVariables = getEnvironmentVariables(appName, request);
 
-		doAsync(request, appName, environmentVariables);
+		taskExecutor.execute(new DeployAsyncRunnable(appName, environmentVariables, request));
+
+		//doAsync(request, appName, environmentVariables);
 
 		// What is missing
 		// Domain
@@ -74,33 +86,6 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 		return appName;
 	}
 
-	@Async
-	public void doAsync(AppDeploymentRequest request, String appName, Map<String, String> environmentVariables) {
-		logger.info("deploy: Updating environment variables for app = {}", appName);
-		cloudFoundryOperations.updateApplicationEnv(appName, environmentVariables);
-
-		try {
-			logger.info("deploy: Uploading app = {}", appName);
-			cloudFoundryOperations.uploadApplication(appName, "spring-cloud-deployer-cloudfoundry",
-				request.getResource().getInputStream());
-		} catch (Exception e) {
-			throw new RuntimeException("Exception trying to deploy " + request, e);
-		}
-
-
-		logger.info("deploy: Updating application instances for app {}", appName);
-		cloudFoundryOperations.updateApplicationInstances(appName, instances(request));
-
-		logger.info("deploy: Starting app {}", appName);
-		StartingInfo startingInfo = cloudFoundryOperations.startApplication(appName);
-
-		if (startingInfo != null) {
-			if (startingInfo.getStagingFile() != null) {
-				logger.info("deploy: StartingInfo staging file = {} ", startingInfo.getStagingFile());
-			}
-		}
-		logger.info("deploy: Done starting application {}", appName);
-	}
 
 
 	@Override
@@ -185,6 +170,48 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 		String appName = String.format("%s%s", prefix, request.getDefinition().getName());
 
 		return this.applicationNameGenerator.generateAppName(appName);
+	}
+
+
+	private class DeployAsyncRunnable implements Runnable {
+
+		private String appName;
+		private Map<String,String> environmentVariables;
+		private AppDeploymentRequest request;
+
+		public DeployAsyncRunnable(String appName, Map<String,String> environmentVariables, AppDeploymentRequest request) {
+			this.appName = appName;
+			this.environmentVariables = environmentVariables;
+			this.request = request;
+		}
+
+		@Override
+		public void run() {
+			logger.info("deploy: Updating environment variables for app = {}", appName);
+			cloudFoundryOperations.updateApplicationEnv(appName, environmentVariables);
+
+			try {
+				logger.info("deploy: Uploading app = {}", appName);
+				cloudFoundryOperations.uploadApplication(appName, "spring-cloud-deployer-cloudfoundry",
+					request.getResource().getInputStream());
+			} catch (Exception e) {
+				throw new RuntimeException("Exception trying to deploy " + request, e);
+			}
+
+
+			logger.info("deploy: Updating application instances for app {}", appName);
+			cloudFoundryOperations.updateApplicationInstances(appName, instances(request));
+
+			logger.info("deploy: Starting app {}", appName);
+			StartingInfo startingInfo = cloudFoundryOperations.startApplication(appName);
+
+			if (startingInfo != null) {
+				if (startingInfo.getStagingFile() != null) {
+					logger.info("deploy: StartingInfo staging file = {} ", startingInfo.getStagingFile());
+				}
+			}
+			logger.info("deploy: Done starting application {}", appName);
+		}
 	}
 
 
