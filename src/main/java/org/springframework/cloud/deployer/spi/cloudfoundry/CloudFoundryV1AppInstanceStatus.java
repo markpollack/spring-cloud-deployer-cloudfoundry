@@ -83,7 +83,7 @@ public class CloudFoundryV1AppInstanceStatus implements AppInstanceStatus {
 			case "STARTED":
 				return DeploymentState.deployed;
 			case "STOPPED":
-				return DeploymentState.partial;  // what to map?
+				return DeploymentState.partial;  // map to undeployed.
 			default:
 				throw new IllegalStateException("Unsupported CF state: " + cloudApplication.getState().name());
 

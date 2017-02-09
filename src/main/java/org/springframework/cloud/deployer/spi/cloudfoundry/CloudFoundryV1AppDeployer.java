@@ -2,6 +2,7 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -9,6 +10,7 @@ import org.cloudfoundry.client.lib.CloudFoundryException;
 import org.cloudfoundry.client.lib.CloudFoundryOperations;
 import org.cloudfoundry.client.lib.StartingInfo;
 import org.cloudfoundry.client.lib.domain.CloudApplication;
+import org.cloudfoundry.client.lib.domain.InstanceInfo;
 import org.cloudfoundry.client.lib.domain.Staging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +62,8 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 
 		Staging staging = new Staging(null, buildpack(request));
 
+		// TODO Here should be the Async Boundary.
+
 		//Do not know if we need to create the URI.
 		String url = appName + "." + cloudFoundryOperations.getDefaultDomain().getName();
 		logger.info("deploy: Creating app = {}", appName);
@@ -76,11 +80,11 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 		//doAsync(request, appName, environmentVariables);
 
 		// What is missing
-		// Domain
-		// HealthCheck
-		// Host
-		// No Route
-		// Route path ?  is that the url above?
+		// Domain (url is the replacement)
+		// HealthCheck - gap
+		// Host  (part of url)
+		// No Route  - gap
+		// Route path - gap
 
 		logger.info("deploy: returning from method {}", appName);
 		return appName;
@@ -128,7 +132,7 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 //	}
 
 
-//		List<InstanceInfo> instanceInfos = instancesInfo.getInstances();
+		//List<InstanceInfo> instanceInfos = instancesInfo.getInstances();
 
 	}
 
@@ -171,7 +175,6 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 
 		return this.applicationNameGenerator.generateAppName(appName);
 	}
-
 
 	private class DeployAsyncRunnable implements Runnable {
 
