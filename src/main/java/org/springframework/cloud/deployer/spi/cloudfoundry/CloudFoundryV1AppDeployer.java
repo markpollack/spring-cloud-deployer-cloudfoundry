@@ -1,7 +1,9 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
+import org.springframework.cloud.deployer.spi.app.MultiStateAppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
@@ -26,7 +29,7 @@ import org.springframework.web.client.HttpStatusCodeException;
 /**
  * Created by mpollack on 2/6/17.
  */
-public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer implements AppDeployer {
+public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer implements MultiStateAppDeployer {
 
 
 	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryV1AppDeployer.class);
@@ -91,7 +94,6 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 	}
 
 
-
 	@Override
 	public void undeploy(String id) {
 		if (appExists(id)) {
@@ -100,6 +102,32 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 			throw new IllegalStateException(id + " is not deployed.");
 		}
 	}
+
+
+	@Override
+	public Map<String, DeploymentState> states(String... ids) {
+		List<String> applicationNames = Arrays.asList(ids);
+		List<CloudApplication> cloudApplications = cloudFoundryOperations.getApplications();
+		Map<String, DeploymentState> deploymentStateMap = new HashMap<>();
+		for (String applicationName : applicationNames) {
+			deploymentStateMap.put(applicationName, DeploymentState.unknown);
+		}
+		for(CloudApplication cloudApplication : cloudApplications) {
+			if (deploymentStateMap.containsKey(cloudApplication.getName())) {
+				deploymentStateMap.put(cloudApplication.getName(), calculateDeploymentState(cloudApplication));
+			}
+		}
+		return null;
+	}
+
+	private DeploymentState calculateDeploymentState(CloudApplication cloudApplication) {
+		if (cloudApplication.getInstances() == cloudApplication.getRunningInstances()) {
+			return DeploymentState.deployed;
+		} else {
+			return DeploymentState.deploying;
+		}
+	}
+
 
 	@Override
 	public AppStatus status(String id) {

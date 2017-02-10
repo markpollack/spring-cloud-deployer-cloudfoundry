@@ -26,8 +26,10 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -39,6 +41,7 @@ import org.cloudfoundry.client.v2.applications.UpdateApplicationResponse;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
@@ -47,6 +50,7 @@ import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cloud.deployer.spi.app.MultiStateAppDeployer;
 import org.yaml.snakeyaml.Yaml;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
@@ -65,7 +69,7 @@ import org.springframework.util.StringUtils;
  * @author Greg Turnquist
  * @author Ben Hale
  */
-public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements AppDeployer {
+public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements MultiStateAppDeployer {
 
 	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryAppDeployer.class);
 
@@ -107,6 +111,34 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 		logger.trace("Exiting deploy().  Deployment Id = {}", deploymentId);
 		return deploymentId;
+	}
+
+	@Override
+	public Map<String, DeploymentState> states(String... ids) {
+		List<String> applicationNames = Arrays.asList(ids);
+		Flux<ApplicationSummary> applicationSummaryFlux = operations.applications().list();
+		List<ApplicationSummary> applicationSummaryList = applicationSummaryFlux.collectList()
+			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
+
+		Map<String, DeploymentState> deploymentStateMap = new HashMap<>();
+		for (String applicationName : applicationNames) {
+			deploymentStateMap.put(applicationName, DeploymentState.unknown);
+		}
+		for(ApplicationSummary applicationSummary : applicationSummaryList ) {
+			if (deploymentStateMap.containsKey(applicationSummary.getName())) {
+				deploymentStateMap.put(applicationSummary.getName(), calculateDeploymentState(applicationSummary));
+			}
+		}
+
+		return deploymentStateMap;
+	}
+
+	private DeploymentState calculateDeploymentState(ApplicationSummary applicationSummary) {
+		if (applicationSummary.getInstances() == applicationSummary.getRunningInstances()) {
+			return DeploymentState.deployed;
+		} else {
+			return DeploymentState.deploying;
+		}
 	}
 
 	@Override
