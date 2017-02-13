@@ -13,6 +13,7 @@ import org.cloudfoundry.client.lib.CloudFoundryOperations;
 import org.cloudfoundry.client.lib.StartingInfo;
 import org.cloudfoundry.client.lib.domain.CloudApplication;
 import org.cloudfoundry.client.lib.domain.InstanceInfo;
+import org.cloudfoundry.client.lib.domain.InstancesInfo;
 import org.cloudfoundry.client.lib.domain.Staging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,8 +48,8 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 		this.cloudFoundryOperations = cloudFoundryOperations;
 		this.applicationNameGenerator = applicationNameGenerator;
 		ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
-		taskExecutor.setCorePoolSize(4);
-		taskExecutor.setMaxPoolSize(4);
+		taskExecutor.setCorePoolSize(10);
+		taskExecutor.setMaxPoolSize(10);
 		taskExecutor.afterPropertiesSet();
 		taskExecutor.setQueueCapacity(100);
 		this.taskExecutor = taskExecutor;
@@ -106,6 +107,7 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 
 	@Override
 	public Map<String, DeploymentState> states(String... ids) {
+		logger.info("states Method: Getting Status for app = {}", ids);
 		List<String> applicationNames = Arrays.asList(ids);
 		List<CloudApplication> cloudApplications = cloudFoundryOperations.getApplications();
 		Map<String, DeploymentState> deploymentStateMap = new HashMap<>();
@@ -117,27 +119,56 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 				deploymentStateMap.put(cloudApplication.getName(), calculateDeploymentState(cloudApplication));
 			}
 		}
-		return null;
+		logger.info("states Method: Returning map = {}", deploymentStateMap);
+		return deploymentStateMap;
 	}
 
 	private DeploymentState calculateDeploymentState(CloudApplication cloudApplication) {
 		if (cloudApplication.getInstances() == cloudApplication.getRunningInstances()) {
 			return DeploymentState.deployed;
+		}else if (cloudApplication.getInstances() > 0) {
+			return DeploymentState.partial;
 		} else {
-			return DeploymentState.deploying;
+			return DeploymentState.undeployed;
 		}
 	}
 
 
 	@Override
 	public AppStatus status(String id) {
-
+		logger.info("status Method: Getting Status for app = {}", id);
+//
 		try {
 			AppStatus.Builder builder = AppStatus.of(id);
-			CloudApplication cloudApplication = cloudFoundryOperations.getApplication(id);
-			CloudFoundryV1AppInstanceStatus generalStateStatus = new CloudFoundryV1AppInstanceStatus(cloudApplication);
-			//Perform a 'light' AppStatus operation, no instance information, will break runtime operations ATM.
-			return builder.generalState(generalStateStatus.getState()).build();
+
+			/**	@Override
+			public InstancesInfo getApplicationInstances(CloudApplication app) {
+			if (app.getState().equals(CloudApplication.AppState.STARTED)) {
+			return doGetApplicationInstances(app.getMeta().getGuid());
+			}
+			return null;
+			}**/
+
+			InstancesInfo instancesInfo = cloudFoundryOperations.getApplicationInstances(id);
+
+			if (instancesInfo == null) {
+				//app request has gone out, but app has not been started.
+				return createErrorAppStatus(id);
+			}
+			int i = 0;
+			for (InstanceInfo instanceInfo : instancesInfo.getInstances()) {
+				builder.with(new CloudFoundryV1AppInstanceStatus(id, instanceInfo, i++));
+			}
+			for (; i < instancesInfo.getInstances().size(); i++) {
+				builder.with(new CloudFoundryV1AppInstanceStatus(id, null, i));
+			}
+			return builder.build();
+
+
+//			CloudApplication cloudApplication = cloudFoundryOperations.getApplication(id);
+//			CloudFoundryV1AppInstanceStatus generalStateStatus = new CloudFoundryV1AppInstanceStatus(cloudApplication);
+//			//Perform a 'light' AppStatus operation, no instance information, will break runtime operations ATM.
+//			return builder.generalState(generalStateStatus.getState()).build();
 		} catch (CloudFoundryException e) {
 			if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
 				logger.info("Status not found for app {} ", id);

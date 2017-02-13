@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.cloudfoundry.client.lib.domain.CloudApplication;
+import org.cloudfoundry.client.lib.domain.InstanceInfo;
 import org.springframework.cloud.deployer.spi.app.AppInstanceStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 
@@ -30,16 +31,26 @@ import org.springframework.cloud.deployer.spi.app.DeploymentState;
  */
 public class CloudFoundryV1AppInstanceStatus implements AppInstanceStatus {
 
-	private final CloudApplication cloudApplication;
+	private final int index;
+	private final String id;
+	private final InstanceInfo instanceInfo;
+//	private final CloudApplication cloudApplication;
 
-	public CloudFoundryV1AppInstanceStatus(CloudApplication cloudApplication) {
-		this.cloudApplication = cloudApplication;
+//	public CloudFoundryV1AppInstanceStatus(CloudApplication cloudApplication) {
+//		this.cloudApplication = cloudApplication;
+//	}
+
+
+	public CloudFoundryV1AppInstanceStatus(String id, InstanceInfo instanceInfo, int index) {
+		this.id = id;
+		this.instanceInfo = instanceInfo;
+		this.index = index;
 	}
 
 	@Override
 	public Map<String, String> getAttributes() {
 		Map<String, String> attributes = new LinkedHashMap<>();
-		if (cloudApplication != null) {
+		if (instanceInfo != null) {
 			// MLP CPU is available on InstanceStats.  Note this method is only used in tests, and compares to an empty map....?
 //			if (cloudApplication.getCpu() != null) {
 //				attributes.put("cpu", String.format("%.1f%%", cloudApplication.getCpu() * 100d));
@@ -56,15 +67,15 @@ public class CloudFoundryV1AppInstanceStatus implements AppInstanceStatus {
 
 	@Override
 	public String getId() {
-		return cloudApplication.getName();
+		return id;
 	}
 
 	@Override
 	public DeploymentState getState() {
-		if (this.cloudApplication == null) {
+		if (this.instanceInfo == null) {
 			return DeploymentState.failed;
 		}
-		switch (cloudApplication.getState().name()) {
+		switch (instanceInfo.getState().name()) {
 
 //			java.lang.IllegalStateException: Unsupported CF state: STOPPED
 //			at org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryV1AppInstanceStatus.getState(CloudFoundryV1AppInstanceStatus.java:82)
@@ -78,30 +89,31 @@ public class CloudFoundryV1AppInstanceStatus implements AppInstanceStatus {
 			/* 	public enum AppState {
 		UPDATING, STARTED, STOPPED
 	}*/
-			case "UPDATING":
-				return DeploymentState.deploying;
-			case "STARTED":
-				return DeploymentState.deployed;
-			case "STOPPED":
-				return DeploymentState.partial;  // map to undeployed.
-			default:
-				throw new IllegalStateException("Unsupported CF state: " + cloudApplication.getState().name());
-
-			// Individual app state
-//			case "STARTING":
-//			case "DOWN":
+//			case "UPDATING":
 //				return DeploymentState.deploying;
-//			case "CRASHED":
-//				return DeploymentState.failed;
-//			// Seems the client incorrectly reports apps as FLAPPING when they are
-//			// obviously fine. Mapping as RUNNING for now
-//			case "FLAPPING":
-//			case "RUNNING":
+//			case "STARTED":
 //				return DeploymentState.deployed;
-//			case "UNKNOWN":
-//				return DeploymentState.unknown;
+//			case "STOPPED":
+//				return DeploymentState.partial;  // map to undeployed.
 //			default:
 //				throw new IllegalStateException("Unsupported CF state: " + cloudApplication.getState().name());
+//
+//
+// Individual app state
+			case "STARTING":
+			case "DOWN":
+				return DeploymentState.deploying;
+			case "CRASHED":
+				return DeploymentState.failed;
+			// Seems the client incorrectly reports apps as FLAPPING when they are
+			// obviously fine. Mapping as RUNNING for now
+			case "FLAPPING":
+			case "RUNNING":
+				return DeploymentState.deployed;
+			case "UNKNOWN":
+				return DeploymentState.unknown;
+			default:
+				throw new IllegalStateException("Unsupported CF state: " + instanceInfo.getState().name());
 		}
 	}
 

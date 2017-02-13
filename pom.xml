@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<artifactId>spring-cloud-deployer-cloudfoundry</artifactId>
-	<version>1.1.2.BUILD-SNAPSHOT</version>
+	<version>1.5.0.BUILD-SNAPSHOT</version>
 	<groupId>org.springframework.cloud</groupId>
 	<packaging>jar</packaging>
 
@@ -12,7 +12,7 @@
 	<parent>
 		<groupId>org.springframework.cloud</groupId>
 		<artifactId>spring-cloud-deployer-parent</artifactId>
-		<version>1.1.0.RELEASE</version>
+		<version>1.1.4.BUILD-SNAPSHOT</version>
 		<relativePath />
 	</parent>
 
@@ -21,7 +21,7 @@
 		<spring-cloud-deployer-spi.version>1.1.4.BUILD-SNAPSHOT</spring-cloud-deployer-spi.version>
 		<cloudfoundry-java-lib.version>2.4.0.BUILD-SNAPSHOT</cloudfoundry-java-lib.version>
 		<cloudfoundry-v1-java-lib.version>1.1.4.BUILD-SNAPSHOT</cloudfoundry-v1-java-lib.version>
-		<reactor-core.version>3.0.4.RELEASE</reactor-core.version>
+		<reactor-core.version>3.0.5.RELEASE</reactor-core.version>
 		<reactor-netty.version>0.6.0.RELEASE</reactor-netty.version>
 	</properties>
 
